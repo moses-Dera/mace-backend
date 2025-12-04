@@ -27,6 +27,7 @@ export const generateCaption = async (req, res, next) => {
     
     if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your-gemini-api-key-here') {
       try {
+        console.log('🤖 Attempting Gemini API call...');
         const enhancedPrompt = buildDynamicPrompt(prompt, tone, platform);
         
         const response = await axios.post(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
@@ -34,15 +35,39 @@ export const generateCaption = async (req, res, next) => {
             parts: [{
               text: enhancedPrompt
             }]
-          }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          }
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
         });
         
-        caption = response.data.candidates[0].content.parts[0].text.trim();
+        if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          caption = response.data.candidates[0].content.parts[0].text.trim();
+          console.log('✅ Gemini API success');
+        } else {
+          console.log('❌ Gemini API returned invalid response structure');
+          caption = getMockCaption(prompt);
+        }
       } catch (geminiError) {
-        console.log('Gemini API failed, using mock response');
+        console.error('❌ Gemini API Error:', {
+          status: geminiError.response?.status,
+          statusText: geminiError.response?.statusText,
+          data: geminiError.response?.data,
+          message: geminiError.message
+        });
+        console.log('🔄 Falling back to mock response');
         caption = getMockCaption(prompt);
       }
     } else {
+      console.log('⚠️ No Gemini API key found, using mock response');
       caption = getMockCaption(prompt);
     }
 
@@ -84,6 +109,42 @@ export const generateCaption = async (req, res, next) => {
     res.status(429).json({
       success: false,
       message: errorMessage
+    });
+  }
+};
+
+export const testGeminiAPI = async (req, res) => {
+  try {
+    console.log('🗺️ Testing Gemini API connection...');
+    console.log('API Key present:', !!process.env.GEMINI_API_KEY);
+    console.log('API Key length:', process.env.GEMINI_API_KEY?.length);
+    
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({ success: false, error: 'No API key found' });
+    }
+
+    const response = await axios.post(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
+      contents: [{
+        parts: [{
+          text: 'Say hello in a friendly way'
+        }]
+      }]
+    }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Gemini API is working!',
+      response: response.data.candidates?.[0]?.content?.parts?.[0]?.text
+    });
+  } catch (error) {
+    console.error('Gemini test failed:', error.response?.data || error.message);
+    res.json({ 
+      success: false, 
+      error: error.response?.data || error.message,
+      status: error.response?.status
     });
   }
 };

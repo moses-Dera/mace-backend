@@ -2,7 +2,7 @@ import express from 'express';
 import { body } from 'express-validator';
 import { validate } from '../middleware/validation.js';
 import { protect } from '../middleware/auth.js';
-import { generateCaption, generateHashtags } from '../controllers/aiController.js';
+import { generateCaption, generateHashtags, testGeminiAPI } from '../controllers/aiController.js';
 
 const router = express.Router();
 
@@ -20,5 +20,8 @@ router.post('/generate-hashtags',
   validate,
   generateHashtags
 );
+
+// Test endpoint for Gemini API
+router.get('/test-gemini', testGeminiAPI);
 
 export default router;
