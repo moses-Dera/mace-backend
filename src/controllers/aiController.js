@@ -2,7 +2,7 @@ import axios from 'axios';
 import User from '../models/User.js';
 import Log from '../models/Log.js';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export const generateCaption = async (req, res, next) => {
   try {
@@ -12,7 +12,7 @@ export const generateCaption = async (req, res, next) => {
     const user = await User.findById(req.user._id);
     const limit = getAILimit(user.plan);
     const currentUsage = user.apiUsage.aiRequestsThisMonth || 0;
-    
+
     if (currentUsage >= limit) {
       return res.status(429).json({
         success: false,
@@ -24,12 +24,12 @@ export const generateCaption = async (req, res, next) => {
 
     // Use Gemini API if key is available, otherwise use mock
     let caption;
-    
+
     if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your-gemini-api-key-here') {
       try {
         console.log('🤖 Attempting Gemini API call...');
         const enhancedPrompt = buildDynamicPrompt(prompt, tone, platform);
-        
+
         const response = await axios.post(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
           contents: [{
             parts: [{
@@ -48,7 +48,7 @@ export const generateCaption = async (req, res, next) => {
           },
           timeout: 10000
         });
-        
+
         if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
           caption = response.data.candidates[0].content.parts[0].text.trim();
           console.log('✅ Gemini API success');
@@ -89,7 +89,7 @@ export const generateCaption = async (req, res, next) => {
     });
   } catch (error) {
     let errorMessage = 'AI service temporarily unavailable';
-    
+
     if (error.response?.status === 429) {
       errorMessage = 'OpenAI rate limit exceeded. Please try again in a few minutes.';
     } else if (error.response?.data?.error?.message) {
@@ -105,7 +105,7 @@ export const generateCaption = async (req, res, next) => {
       status: 'failure',
       errorMessage
     });
-    
+
     res.status(429).json({
       success: false,
       message: errorMessage
@@ -118,7 +118,7 @@ export const testGeminiAPI = async (req, res) => {
     console.log('🗺️ Testing Gemini API connection...');
     console.log('API Key present:', !!process.env.GEMINI_API_KEY);
     console.log('API Key length:', process.env.GEMINI_API_KEY?.length);
-    
+
     if (!process.env.GEMINI_API_KEY) {
       return res.json({ success: false, error: 'No API key found' });
     }
@@ -134,15 +134,15 @@ export const testGeminiAPI = async (req, res) => {
       timeout: 10000
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Gemini API is working!',
       response: response.data.candidates?.[0]?.content?.parts?.[0]?.text
     });
   } catch (error) {
     console.error('Gemini test failed:', error.response?.data || error.message);
-    res.json({ 
-      success: false, 
+    res.json({
+      success: false,
       error: error.response?.data || error.message,
       status: error.response?.status
     });
@@ -161,18 +161,50 @@ export const generateHashtags = async (req, res, next) => {
       });
     }
 
-    const prompt = `Generate ${count} relevant hashtags for this ${platform} content: "${content}". Return only hashtags separated by spaces, no explanations.`;
+    const prompt = `Generate ${count} relevant, high-performing hashtags for this ${platform} post: "${content}". Return ONLY the hashtags separated by spaces. Do not include numbering or explanations.`;
 
-    // Mock hashtag generation for development
-    const mockHashtags = {
-      cooking: ['#Cooking', '#Foodie', '#HomeMade', '#Recipe', '#Delicious', '#Chef', '#Kitchen', '#Food', '#Yummy', '#Tasty'],
-      business: ['#Business', '#Success', '#Entrepreneur', '#Leadership', '#Growth', '#Innovation', '#Strategy', '#Professional', '#Career', '#Motivation'],
-      travel: ['#Travel', '#Adventure', '#Wanderlust', '#Explore', '#Journey', '#Vacation', '#Tourism', '#Discover', '#Nature', '#Photography'],
-      fitness: ['#Fitness', '#Workout', '#Health', '#Gym', '#Strong', '#Motivation', '#Exercise', '#Wellness', '#Strength', '#Healthy']
-    };
-    
-    const baseHashtags = mockHashtags[content.toLowerCase().split(' ')[0]] || ['#Content', '#Social', '#Media', '#Post', '#Share', '#Engage', '#Community', '#Digital', '#Online', '#Creative'];
-    const hashtags = baseHashtags.slice(0, count);
+    let hashtags;
+
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your-gemini-api-key-here') {
+      try {
+        console.log('🤖 Attempting Gemini API for hashtags...');
+        const response = await axios.post(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 200,
+          }
+        }, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000
+        });
+
+        if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          const text = response.data.candidates[0].content.parts[0].text.trim();
+          // Extract hashtags using regex to ensure clean output
+          const extracted = text.match(/#[a-zA-Z0-9_]+/g);
+          if (extracted && extracted.length > 0) {
+            hashtags = extracted.slice(0, count);
+            console.log('✅ Gemini API hashtags success');
+          } else {
+            throw new Error('No hashtags found in response');
+          }
+        } else {
+          throw new Error('Invalid response structure');
+        }
+      } catch (error) {
+        console.error('❌ Gemini API Hashtag Error:', error.message);
+        console.log('🔄 Falling back to mock hashtags');
+        hashtags = getMockHashtags(content, count);
+      }
+    } else {
+      console.log('⚠️ No Gemini API key, using mock hashtags');
+      hashtags = getMockHashtags(content, count);
+    }
 
     user.apiUsage.aiRequestsThisMonth += 1;
     await user.save();
@@ -234,17 +266,30 @@ Generate ONE caption only:`;
 const getMockCaption = (prompt) => {
   const dynamicCaptions = [
     `Just discovered something fascinating about ${prompt}... and honestly, it's changed my entire perspective. Sometimes the best insights come from the most unexpected places. What's the last thing that completely shifted your thinking? 🤔`,
-    
+
     `Real talk: ${prompt} isn't what I thought it would be. Three months ago, I had completely different expectations. Here's what actually happened... (and why I'm grateful for being wrong) ✨`,
-    
+
     `That moment when ${prompt} finally clicks... 💡 You know that feeling when everything suddenly makes sense? Just had one of those breakthrough moments and had to share. Anyone else experience this recently?`,
-    
+
     `Plot twist: ${prompt} taught me more about myself than I expected. Funny how life works like that, right? Sometimes we think we're learning one thing, but we're actually discovering something completely different about who we are.`,
-    
+
     `Can we talk about ${prompt} for a second? Because what I'm seeing lately is absolutely mind-blowing. Not in a hypey way, but in a 'this is genuinely changing how people think' way. Thoughts? 🧠`
   ];
-  
+
   return dynamicCaptions[Math.floor(Math.random() * dynamicCaptions.length)];
+};
+
+const getMockHashtags = (content, count) => {
+  const mockHashtags = {
+    cooking: ['#Cooking', '#Foodie', '#HomeMade', '#Recipe', '#Delicious', '#Chef', '#Kitchen', '#Food', '#Yummy', '#Tasty'],
+    business: ['#Business', '#Success', '#Entrepreneur', '#Leadership', '#Growth', '#Innovation', '#Strategy', '#Professional', '#Career', '#Motivation'],
+    travel: ['#Travel', '#Adventure', '#Wanderlust', '#Explore', '#Journey', '#Vacation', '#Tourism', '#Discover', '#Nature', '#Photography'],
+    fitness: ['#Fitness', '#Workout', '#Health', '#Gym', '#Strong', '#Motivation', '#Exercise', '#Wellness', '#Strength', '#Healthy']
+  };
+
+  const key = content.toLowerCase().split(' ')[0];
+  const baseHashtags = mockHashtags[key] || ['#Content', '#Social', '#Media', '#Post', '#Share', '#Engage', '#Community', '#Digital', '#Online', '#Creative'];
+  return baseHashtags.slice(0, count);
 };
 
 const getAILimit = (plan) => {
