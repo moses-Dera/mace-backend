@@ -3,6 +3,7 @@ import ScheduledPost from '../models/ScheduledPost.js';
 import ConnectedAccount from '../models/ConnectedAccount.js';
 import Log from '../models/Log.js';
 import { publishPost } from './socialService.js';
+import axios from 'axios';
 
 // Check for posts to publish every minute
 export const processScheduledPosts = async () => {
@@ -101,12 +102,28 @@ const tokenRefreshJob = cron.schedule('0 0 * * *', async () => {
   }
 });
 
+// Self-ping to keep server alive (runs every 14 minutes)
+const selfPingJob = cron.schedule('*/14 * * * *', async () => {
+  try {
+    const port = process.env.PORT || 5000;
+    // Use localhost for self-ping
+    const url = `http://localhost:${port}/health`;
+    console.log(`Pinging ${url} to keep server alive...`);
+    const response = await axios.get(url);
+    console.log(`Self-ping successful: ${response.status}`);
+  } catch (error) {
+    console.error('Self-ping failed:', error.message);
+  }
+});
+
 export const startCronJobs = () => {
   postSchedulerJob.start();
   tokenRefreshJob.start();
+  selfPingJob.start();
 };
 
 export const stopCronJobs = () => {
   postSchedulerJob.stop();
   tokenRefreshJob.stop();
+  selfPingJob.stop();
 };
