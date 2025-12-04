@@ -1,0 +1,60 @@
+🔌 Connecting to MongoDB...
+✅ Connected
+
+🔍 Simulating Controller Query:
+   Filter: {}
+   Sort: { scheduledTime: -1 }
+   Limit: 10
+   Page: 1
+
+📊 Query returned 10 posts.
+
+[1] ID: 6931773fb1b58383f58a09b3
+    Status: pending
+    Scheduled: Thu Dec 04 2025 13:59:00 GMT+0100 (West Africa Standard Time)
+    Caption: test 4
+
+[2] ID: 693172143766e2da75f7cd1d
+    Status: pending
+    Scheduled: Thu Dec 04 2025 13:37:00 GMT+0100 (West Africa Standard Time)
+    Caption: jjjjj
+
+[3] ID: 693171b03766e2da75f7cd0c
+    Status: pending
+    Scheduled: Thu Dec 04 2025 13:35:00 GMT+0100 (West Africa Standard Time)
+    Caption: jjjk
+
+[4] ID: 6931703c3766e2da75f7ccf4
+    Status: pending
+    Scheduled: Thu Dec 04 2025 13:30:00 GMT+0100 (West Africa Standard Time)
+    Caption: testing
+
+[5] ID: 69317989b1b58383f58a0a0a
+    Status: published
+    Scheduled: Thu Dec 04 2025 13:10:00 GMT+0100 (West Africa Standard Time)
+    Caption: cccc
+
+[6] ID: 69316b9bb3adb84da3ffbd8b
+    Status: published
+    Scheduled: Thu Dec 04 2025 13:10:00 GMT+0100 (West Africa Standard Time)
+    Caption: test 3
+
+[7] ID: 6931786fb1b58383f58a09e1
+    Status: published
+    Scheduled: Thu Dec 04 2025 13:04:00 GMT+0100 (West Africa Standard Time)
+    Caption: bb
+
+[8] ID: 69317851b1b58383f58a09cf
+    Status: published
+    Scheduled: Thu Dec 04 2025 13:04:00 GMT+0100 (West Africa Standard Time)
+    Caption: test 6
+
+[9] ID: 693170cdf1da549a181754bb
+    Status: published
+    Scheduled: Thu Dec 04 2025 12:29:21 GMT+0100 (West Africa Standard Time)
+    Caption: 🤖 Immediate Test Post 2025-12-04T11:30:21.013Z
+
+[10] ID: 693170a33d120b142efeb7fd
+    Status: published
+    Scheduled: Thu Dec 04 2025 12:28:39 GMT+0100 (West Africa Standard Time)
+    Caption: 🤖 Immediate Test Post 2025-12-04T11:29:39.405Z
